@@ -5,12 +5,17 @@ use mime::Mime;
 use reqwest::{header, Client, Response, Url};
 use std::collections::HashMap;
 use std::str::FromStr;
+
+use syntect::easy::HighlightLines;
+use syntect::highlighting::{Style, ThemeSet};
+use syntect::parsing::SyntaxSet;
+use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
 // 定义HTTPie的CLI主入口，包含若干个子命令
 // 下面///的注视时文档，clap会将其作为CLI的帮助
 
 // A native httpie implementation with Rust, can you imagine how easy it is?
 #[derive(Parser, Debug)]
-#[clap(version = "1.0" ,author = "Mat Miao <280536928@qq.com>")]
+#[clap(version = "1.0", author = "Mat Miao <280536928@qq.com>")]
 struct Opts {
     #[clap(subcommand)]
     subcmd: SubCommand,
@@ -96,9 +101,24 @@ fn print_headers(resp: &Response) {
 fn print_body(m: Option<Mime>, body: &String) {
     match m {
         Some(v) if v == mime::APPLICATION_JSON => {
-            println!("{}", jsonxf::pretty_print(body).unwrap().cyan())
+            // println!("{}", jsonxf::pretty_print(body).unwrap().cyan())
+            print_syntect(body);
         }
         _ => println!("{}", body),
+    }
+}
+
+fn print_syntect(s: &str) {
+    // Load these once at the start of your program
+    let ps = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+
+    let syntax = ps.find_syntax_by_extension("json").unwrap();
+    let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
+    for line in LinesWithEndings::from(s) {
+        let ranges: Vec<(Style, &str)> = h.highlight(line, &ps);
+        let escaped = as_24_bit_terminal_escaped(&ranges[..], true);
+        print!("{}", escaped);
     }
 }
 
