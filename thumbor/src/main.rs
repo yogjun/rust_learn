@@ -56,11 +56,12 @@ async fn generate(
     Path(Params { spec, url }): Path<Params>,
     Extension(cache): Extension<Cache>,
 ) -> Result<(HeaderMap, Vec<u8>), StatusCode> {
-    let url = percent_decode_str(&url).decode_utf8_lossy();
     let spec: ImageSpec = spec
         .as_str()
         .try_into()
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let url: &str = &percent_decode_str(&url).decode_utf8_lossy();
 
     let data = retrieve_image(&url, cache)
         .await
@@ -72,7 +73,6 @@ async fn generate(
 
     headers.insert("Content-Type", HeaderValue::from_static("image/jpeg"));
 
-    // Ok(format!("url:{}\n spec:{:#?}", url, spec))
     Ok((headers, data.to_vec()))
 }
 
