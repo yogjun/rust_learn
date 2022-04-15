@@ -55,7 +55,7 @@ async fn main() {
 async fn generate(
     Path(Params { spec, url }): Path<Params>,
     Extension(cache): Extension<Cache>,
-) -> Result<String, StatusCode> {
+) -> Result<(HeaderMap, Vec<u8>), StatusCode> {
     let url = percent_decode_str(&url).decode_utf8_lossy();
     let spec: ImageSpec = spec
         .as_str()
@@ -73,7 +73,7 @@ async fn generate(
     headers.insert("Content-Type", HeaderValue::from_static("image/jpeg"));
 
     // Ok(format!("url:{}\n spec:{:#?}", url, spec))
-    Ok((headers, data.to_vec))
+    Ok((headers, data.to_vec()))
 }
 
 #[instrument(level = "info", skip(cache))]
@@ -86,7 +86,7 @@ async fn retrieve_image(url: &str, cache: Cache) -> Result<Bytes> {
     let data = match g.get(&key) {
         Some(v) => {
             info!("Match cache {}", key);
-            v.to_owned();
+            v.to_owned()
         }
         None => {
             info!("Retrieve url");
@@ -101,11 +101,11 @@ async fn retrieve_image(url: &str, cache: Cache) -> Result<Bytes> {
 
 fn print_test_url(url: &str) {
     use std::borrow::Borrow;
-    let spec1 = Spec::new_resize(500,800,resize::SampleFilter::CatmullRom);
-    let spec2 = Spec::new_watermark(20,20);
+    let spec1 = Spec::new_resize(500, 800, resize::SampleFilter::CatmullRom);
+    let spec2 = Spec::new_watermark(20, 20);
     let spec3 = Spec::new_filter(filter::Filter::Marine);
-    let image_spec = ImageSpec::new(vec![spec1,spec2,spec3]);
+    let image_spec = ImageSpec::new(vec![spec1, spec2, spec3]);
     let s: String = image_spec.borrow().into();
-    let test_image = percent_encode(url.as_bytes(),NON_ALPHANUMERIC.to_string);
+    let test_image = percent_encode(url.as_bytes(), NON_ALPHANUMERIC.to_string());
     println!("test url: http://localhost:3000/image/{}/{}", s, test_image);
 }
