@@ -18,6 +18,9 @@ use std::{
 use tokio::sync::Mutex;
 use tower::ServiceBuilder;
 use tracing::{info, instrument};
+mod engine;
+use engine::{Engine, Photon};
+use image::ImageOutputFormat;
 
 mod pb;
 use pb::*;
@@ -51,7 +54,6 @@ async fn main() {
         .await
         .unwrap();
 }
-
 async fn generate(
     Path(Params { spec, url }): Path<Params>,
     Extension(cache): Extension<Cache>,
@@ -60,20 +62,23 @@ async fn generate(
         .as_str()
         .try_into()
         .map_err(|_| StatusCode::BAD_REQUEST)?;
-
     let url: &str = &percent_decode_str(&url).decode_utf8_lossy();
-
     let data = retrieve_image(&url, cache)
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    // todo 处理 图片
+    // 使用engine处理
+    let mut engine: Photon = data
+        .try_into()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    engine.apply(&spec.specs);
+
+    let image = engine.generate(ImageOutputFormat::Jpeg(85));
+    info!("Finished processing: image size {}", image.len());
 
     let mut headers = HeaderMap::new();
-
-    headers.insert("Content-Type", HeaderValue::from_static("image/jpeg"));
-
-    Ok((headers, data.to_vec()))
+    headers.insert("content-type", HeaderValue::from_static("image/jpeg"));
+    Ok((headers, image)).map_err(|_| StatusCode::BAD_REQUEST)
 }
 
 #[instrument(level = "info", skip(cache))]
@@ -106,6 +111,13 @@ fn print_test_url(url: &str) {
     let spec3 = Spec::new_filter(filter::Filter::Marine);
     let image_spec = ImageSpec::new(vec![spec1, spec2, spec3]);
     let s: String = image_spec.borrow().into();
-    let test_image = percent_encode(url.as_bytes(), NON_ALPHANUMERIC.to_string());
+    let test_image = percent_encode(url.as_bytes(), NON_ALPHANUMERIC).to_string();
     println!("test url: http://localhost:3000/image/{}/{}", s, test_image);
 }
+
+
+
+
+
+
+/////// RUST_LOG=info target/release/thumbor
