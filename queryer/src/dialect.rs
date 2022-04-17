@@ -12,8 +12,8 @@ impl Dialect for TyrDialect {
     // identifier 可以有 ':' '/' '?' '&' '='
     fn is_identifier_part(&self, ch: char) -> bool {
         ('a'..='z').contains(&ch)
-            || ('A'..'Z').contains(&ch)
-            || ('0'..'9').contains(&ch)
+            || ('A'..='Z').contains(&ch)
+            || ('0'..='9').contains(&ch)
             || [':', '/', '?', '&', '=', '-', '_', '.'].contains(&ch)
     }
 }
