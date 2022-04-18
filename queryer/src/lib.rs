@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result, Ok};
+use anyhow::{anyhow, Ok, Result};
 use polars::prelude::*;
 use sqlparser::parser::Parser;
 use std::convert::TryInto;
@@ -20,7 +20,7 @@ pub struct DataSet(DataFrame);
 /// 我们自己的类型 Dataset 使用起来Dataframe
 impl Deref for DataSet {
     type Target = DataFrame;
-    fn deref(&self) -> &self::Target {
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -32,7 +32,7 @@ impl DerefMut for DataSet {
 }
 
 impl DataSet {
-    pub fn to_csv(&self) -> Result< String> {
+    pub fn to_csv(&self) -> Result<String> {
         let mut buf = Vec::new();
         let writer = CsvWriter::new(&mut buf);
         writer.finish(self)?;
@@ -42,7 +42,7 @@ impl DataSet {
 
 /// 从 from 中获取数据，从 where 中过滤，最后选取需要返回的列
 pub async fn query<T: AsRef<str>>(sql: T) -> Result<DataSet> {
-    let ast = Parser::parse_sql(&TyrDialect::default(),sql.as_ref())?;
+    let ast = Parser::parse_sql(&TyrDialect::default(), sql.as_ref())?;
 
     if ast.len() != 1 {
         return Err(anyhow!("Only support single sql at the moment"));
@@ -51,10 +51,15 @@ pub async fn query<T: AsRef<str>>(sql: T) -> Result<DataSet> {
     let sql = &ast[0];
 
     let Sql {
-        source,condition,selection,offset,limit,order_by,
+        source,
+        condition,
+        selection,
+        offset,
+        limit,
+        order_by,
     } = sql.try_into()?;
 
-    info!("retrieving data from source: {}",source);
+    info!("retrieving data from source: {}", source);
 
     // 从source 读入一个DataSet
     // detect_content
@@ -65,12 +70,13 @@ pub async fn query<T: AsRef<str>>(sql: T) -> Result<DataSet> {
         None => ds.0.lazy(),
     };
 
-    filtered = order_by.into_iter().fold(filtered, |acc,(col,desc)| acc.sort(&col,desc).collect());
+    filtered = order_by
+        .into_iter()
+        .fold(filtered, |acc, (col, desc)| acc.sort(&col, desc));
 
     if offset.is_some() || limit.is_some() {
-        filtered = filtered.slice(offset.unwrap_or(0),limit.unwrap_or(usize::MAX));
+        filtered = filtered.slice(offset.unwrap_or(0), limit.unwrap_or(usize::MAX));
     }
 
     Ok(DataSet(filtered.select(selection).collect()?))
-
 }
