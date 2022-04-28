@@ -153,6 +153,7 @@ impl<'a> TryFrom<Source<'a>> for &'a str {
         }
 
         let table = &source.0[0];
+        println!("{:?}",table);
         if !table.joins.is_empty() {
             return Err(anyhow!("We do not support joint data source at the moment"));
         }
