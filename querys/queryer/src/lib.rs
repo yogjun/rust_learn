@@ -52,6 +52,8 @@ pub async fn query<T: AsRef<str>>(sql: T) -> Result<DataSet> {
 
     let Sql {
         source,
+        sources,
+        joins,
         condition,
         selection,
         offset,

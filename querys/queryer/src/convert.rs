@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Ok, Result};
 use polars::prelude::*;
 use sqlparser::ast::{
-    BinaryOperator as SqlBinaryOperator, Expr as SqlExpr, Offset as SqlOffset, OrderByExpr, Select,
-    SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Value as SqlValue,
+    BinaryOperator as SqlBinaryOperator, Expr as SqlExpr, Join, Offset as SqlOffset, OrderByExpr,
+    Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Value as SqlValue,
 };
 
 /// 解析出来的sql
@@ -10,6 +10,8 @@ pub struct Sql<'a> {
     pub(crate) selection: Vec<Expr>,
     pub(crate) condition: Option<Expr>,
     pub(crate) source: &'a str,
+    pub(crate) sources: Vec<String>,
+    pub(crate) joins: Vec<Join>,
     pub(crate) order_by: Vec<(String, bool)>,
     pub(crate) offset: Option<i64>,
     pub(crate) limit: Option<usize>,
@@ -20,6 +22,8 @@ pub struct Operation(pub(crate) SqlBinaryOperator);
 pub struct Projection<'a>(pub(crate) &'a SelectItem);
 pub struct Source<'a>(pub(crate) &'a [TableWithJoins]);
 pub struct Order<'a>(pub(crate) &'a OrderByExpr);
+pub struct MyJoin<'a>(pub(crate) &'a [TableWithJoins]);
+pub struct MySource<'a>(pub(crate) &'a [TableWithJoins]);
 pub struct Offset<'a>(pub(crate) &'a SqlOffset);
 pub struct Limit<'a>(pub(crate) &'a SqlExpr);
 pub struct Value(pub(crate) SqlValue);
@@ -43,8 +47,10 @@ impl<'a> TryFrom<&'a Statement> for Sql<'a> {
                     SetExpr::Select(statement) => statement.as_ref(),
                     _ => return Err(anyhow!("We only support Select Query at the moment")),
                 };
-
+                // 主数据源
                 let source = Source(table_with_joins).try_into()?;
+                let sources = MySource(table_with_joins).try_into()?;
+                let joins = MyJoin(table_with_joins).try_into()?;
 
                 let condition = match where_clause {
                     Some(expr) => Some(Expression(Box::new(expr.to_owned())).try_into()?),
@@ -68,6 +74,8 @@ impl<'a> TryFrom<&'a Statement> for Sql<'a> {
                     selection,
                     condition,
                     source,
+                    sources,
+                    joins,
                     order_by,
                     offset,
                     limit,
@@ -89,12 +97,12 @@ impl TryFrom<Expression> for Expr {
                 op: Operation(op).try_into()?,
                 right: Box::new(Expression(right).try_into()?),
             }),
-            SqlExpr::Wildcard =>Ok(Self::Wildcard),
+            SqlExpr::Wildcard => Ok(Self::Wildcard),
             SqlExpr::IsNull(expr) => Ok(Self::IsNull(Box::new(Expression(expr).try_into()?))),
             SqlExpr::IsNotNull(expr) => Ok(Self::IsNotNull(Box::new(Expression(expr).try_into()?))),
             SqlExpr::Identifier(id) => Ok(Self::Column(Arc::new(id.value))),
             SqlExpr::Value(v) => Ok(Self::Literal(Value(v).try_into()?)),
-            v => Err(anyhow!("expr {:#?} is not support",v)),
+            v => Err(anyhow!("expr {:#?} is not support", v)),
         }
     }
 }
@@ -148,20 +156,60 @@ impl<'a> TryFrom<Source<'a>> for &'a str {
     type Error = anyhow::Error;
 
     fn try_from(source: Source<'a>) -> Result<Self, Self::Error> {
-        if source.0.len() != 1 {
+        if source.0.len() < 1 {
             return Err(anyhow!("We only support single data source at the moment"));
         }
 
         let table = &source.0[0];
-        println!("{:?}",&source.0);
-        if !table.joins.is_empty() {
-            return Err(anyhow!("We do not support joint data source at the moment"));
-        }
+        println!("{:?}", &source.0);
+        // if !table.joins.is_empty() {
+        //     return Err(anyhow!("We do not support joint data source at the moment"));
+        // }
 
         match &table.relation {
             TableFactor::Table { name, .. } => Ok(&name.0.first().unwrap().value),
             _ => Err(anyhow!("We only support table")),
         }
+    }
+}
+
+impl<'a> TryFrom<MySource<'a>> for Vec<String> {
+    type Error = anyhow::Error;
+
+    fn try_from(source: MySource<'a>) -> Result<Self, Self::Error> {
+        if source.0.len() < 1 {
+            return Err(anyhow!("We only support single data source at the moment"));
+        }
+        let table = &source.0[0];
+
+        let mut tableUrls: Vec<String> = Vec::new();
+        match &table.relation {
+            TableFactor::Table { name, .. } => tableUrls.push(name.0.first().unwrap().value.clone()),
+            _ => return Err(anyhow!("relation table can not be empty")),
+        };
+        table.joins.iter().for_each(|arg|{
+            match &arg.relation {
+                TableFactor::Table { name, .. } => tableUrls.push(name.0.first().unwrap().value.clone()),
+                _ => println!(),
+            };
+        });
+        Ok(tableUrls)
+    }
+}
+
+impl<'a> TryFrom<MyJoin<'a>> for Vec<Join> {
+    type Error = anyhow::Error;
+    fn try_from(source: MyJoin<'a>) -> Result<Self, Self::Error> {
+        let table = &source.0[0];
+        // let mut tableUrls: Vec<Join> = source.0[0].joins;
+        // table.joins.iter().for_each(|arg|{
+        //     tableUrls.push(arg);
+        // });
+        let mut tableUrls: Vec<Join> =  Vec::new();
+        table.joins.iter().for_each(|arg|{
+            tableUrls .push(arg.clone());
+        });
+        Ok(tableUrls)
     }
 }
 
@@ -183,7 +231,6 @@ impl<'a> TryFrom<Order<'a>> for (String, bool) {
         Ok((name, !o.0.asc.unwrap_or(true)))
     }
 }
-
 
 /// 把 SqlParser 的 offset expr 转换成 i64
 impl<'a> From<Offset<'a>> for i64 {
