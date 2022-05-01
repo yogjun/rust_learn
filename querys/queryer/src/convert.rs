@@ -187,6 +187,7 @@ impl<'a> TryFrom<MySource<'a>> for Vec<String> {
             TableFactor::Table { name, .. } => tableUrls.push(name.0.first().unwrap().value.clone()),
             _ => return Err(anyhow!("relation table can not be empty")),
         };
+        
         table.joins.iter().for_each(|arg|{
             match &arg.relation {
                 TableFactor::Table { name, .. } => tableUrls.push(name.0.first().unwrap().value.clone()),

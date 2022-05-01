@@ -2,7 +2,7 @@ use anyhow::{anyhow, Ok, Result};
 use polars::prelude::*;
 use sqlparser::parser::Parser;
 use std::convert::TryInto;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, DivAssign};
 use tracing::info;
 mod convert;
 mod dialect;
@@ -66,6 +66,20 @@ pub async fn query<T: AsRef<str>>(sql: T) -> Result<DataSet> {
     // 从source 读入一个DataSet
     // detect_content
     let ds = detect_content(retrieve_data(source).await?).load()?;
+
+    let mut dss: Vec<DataSet> =  Vec::new();
+    for i in sources.iter() {
+
+        // let dst = detect_content(retrieve_data(sources[i].try_into()).await?).load()?;
+        // dss.push(dst);
+    }
+
+
+    sources.iter().for_each(|arg|{
+        // let dst = detect_content(retrieve_data(arg).await?).load()?;
+        // dss.push(dst);
+    });
+
 
     let mut filtered = match condition {
         Some(expr) => ds.0.lazy().filter(expr),
