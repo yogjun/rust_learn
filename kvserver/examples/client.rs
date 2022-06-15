@@ -3,7 +3,7 @@ use async_prost::AsyncProstStream;
 use tokio::net::TcpStream;
 use tracing::info;
 use futures::prelude::*;
-use kv::{CommandRequest, CommandResponse};
+use kvserver::{CommandRequest, CommandResponse};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,5 +15,13 @@ async fn main() -> Result<()> {
     /// AsyncProstStream
     let mut client =
         AsyncProstStream::<_, CommandResponse, CommandRequest, _>::from(stream).for_async();
+
+    let cmd = CommandRequest::new_hset("table1","hello","world".into());
+
+    // 发送hset
+    client.send(cmd).await?;
+    if let Some(Ok(data)) = client.next().await{
+        info!("Got response {:?}",data);
+    }
     Ok(())
 }
