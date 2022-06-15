@@ -1,1 +1,3 @@
-fn main() {}
+mod pb;
+pub use pb::abi::*;
+

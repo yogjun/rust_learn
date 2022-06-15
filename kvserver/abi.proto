@@ -13,12 +13,12 @@ message CommandRequest {
         Hdel hdel = 6;
         Hmdel hmdel = 7;
         Hexist hexist = 8;
-        Hmexist hexist = 9;
+        Hmexist hmexist = 9;
     }
 }
 
 // 服务器响应
-message CommandResposne {
+message CommandResponse {
     // 状态码；服用 HTTP 2xx/4xx/5xx 状态码
     uint32 status = 1;
     // 如果不是2xx,message 里面需要包含详细信息
@@ -75,7 +75,7 @@ message Hset {
 // 如果table里不存在就创建这个table
 message Hmset {
     string table = 1;
-    repeated Kvpair = 2;
+    repeated Kvpair pairs = 2;
 }
 
 // 从table中删除一个key，返回之前的值
