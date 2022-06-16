@@ -1,3 +1,7 @@
+mod error;
 mod pb;
-pub use pb::abi::*;
+mod storage;
 
+pub use error::KvError;
+pub use pb::abi::*;
+pub use storage::*;
