@@ -182,7 +182,7 @@
             "actVolume": null,
             "actWeight": null,
             "bulkyWeight": null,
-            "sepBulkyWeight": null,
+            "sepBulkyWeight": 0,
             "settleVolume": 0,
             "settleWeight": null,
             "type": 0,
@@ -199,8 +199,8 @@
             "dstName": "阿根廷",
             "extendInfo": null,
             "null": false,
-            "planId": "733151235336449",
-            "planName": "选择CBM——lqx",
+            "planId": "1543920624833970177",
+            "planName": "KG-lqx",
             "type": 1
         },
         "receivablePOs": [],
@@ -319,7 +319,7 @@
             "paymentTime": null,
             "shippingTime": null,
             "transportationCompleteTime": null,
-            "updateTime": "2022-07-04 16:23:08"
+            "updateTime": "2022-07-04 20:06:29"
         },
         "totalVolume": "0",
         "totalWeight": "0",
@@ -331,5 +331,5 @@
     },
     "ema": null,
     "message": "",
-    "timestamp": "2022-07-04 20:05:46"
+    "timestamp": "2022-07-04 20:06:44"
 }
